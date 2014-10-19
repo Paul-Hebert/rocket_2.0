@@ -2,7 +2,9 @@
 
 <html>
 	<head>
-		<?php include('php/resources.php'); ?>
+		<?php 
+			include('php/resources.php'); 
+		?>
 	</head>
 
 	<body>
