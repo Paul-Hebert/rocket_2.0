@@ -1,19 +1,8 @@
 
-// Set up starfield on load.
-$( function(){
-	screenWidth = window.innerWidth;
-	screenHeight = window.innerHeight;
-	starDensity = rando(100,150);
-
-	sky = Snap(screenWidth,screenHeight);
-	createStars(starDensity);
-
-	setInterval("move(1,3)",200);
-})
-
+//Generate initial stars
 function createStars(num){
-	stars = new Array();
-	starNum = new Array();
+	starObjects = new Array();
+	starSVGs = new Array();
 
 	for (i=0; i< num; i++){
 		starObject(i);
@@ -21,33 +10,39 @@ function createStars(num){
 	}
 }
 
+//Add a new star object to starObjects[].
 function starObject(i){
-	stars[i] = Object.create(null);
+	starObjects[i] = Object.create(null);
 
-	stars[i].scale = rando(1,1.5);
-	stars[i].distance = rando(1,3);
-	stars[i].relativeSize = stars[i].scale / stars[i].distance;
+	starObjects[i].scale = rando(1,1.5);
+	starObjects[i].distance = rando(1,3);
+	starObjects[i].relativeSize = starObjects[i].scale / starObjects[i].distance;
 
-	stars[i].x = rando(1,screenWidth);
-	stars[i].y = rando(1,screenHeight);
+	starObjects[i].x = rando(1,screenWidth);
+	starObjects[i].y = rando(1,screenHeight);
 }
 
+//Add a new star SVG to starSVGs[].
 function starSVG(i){
-	star = sky.circle(stars[i].x, stars[i].y, stars[i].relativeSize);
+	star = sky.circle(starObjects[i].x, starObjects[i].y, starObjects[i].relativeSize);
 
 	star.attr({'id':'star' + i});
 	star.attr({'class':'star'});
 
-	starNum.push(star);
+	starSVGs.push(star);
 }
 
-function move(x,y){
-	for(i=0;i<stars.length;i++){
-		currentStar = stars[i];
+//Iterate through stars moving them.
+function moveStars(x,y){
+	for(i=0;i<starObjects.length;i++){
+		// Set current star
+		currentStar = starObjects[i];
 
-		// Move stars. Adjusted by distnace to create a parallax effect.
-		currentStar.x += x/currentStar.distance;
-		currentStar.y += y/currentStar.distance;
+		var parallax = currentStar.distance * 2;
+
+		// Move stars. Adjusted by distance to create a parallax effect.
+		currentStar.x += x/parallax;
+		currentStar.y += y/parallax;
 		
 		// If stars are off the screen move them to the other side and randomize the other variable.
 		if (currentStar.x > screenWidth){
@@ -67,11 +62,10 @@ function move(x,y){
 
 		// Animate changes.
 		if (currentStar.x == 0 || currentStar.x == screenWidth || currentStar.y == 0 || currentStar.y == screenHeight){
-			starNum[i].animate({cx:currentStar.x},0);
-			starNum[i].animate({cy:currentStar.y},0);			
+			starSVGs[i].animate({cx:currentStar.x,cy:currentStar.y},0);			
 		} else{
-			starNum[i].animate({cx:currentStar.x},200);
-			starNum[i].animate({cy:currentStar.y},200);
+			starSVGs[i].animate({cx:currentStar.x},frameRate);
+			starSVGs[i].animate({cy:currentStar.y},frameRate);
 		}
 
 	}

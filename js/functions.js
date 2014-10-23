@@ -1,5 +1,5 @@
 //Random taken names. Just to be used until mySQL is implemented.
-availableParts = ['fin.png','porthole.png','gun.png','jet.png'];
+availableParts = ['fins','porthole','gun','jet1'];
 
 
 /*/////////////////////////////////////////////////////////////////////////////
@@ -11,6 +11,44 @@ availableParts = ['fin.png','porthole.png','gun.png','jet.png'];
 	ship = Object.create(null);
 	ship.name = null;
 	ship.type = null;
+	ship.speed = .5;
+	ship.thrust = 4;
+	ship.rot = 0;
+
+	//****************************************************************************************//
+	//  Input control   //
+	//****************************************************************************************//
+
+	//  Set down keys to true;
+	$(document).keydown(function(e) {
+	    if (e.keyCode in map) {
+	        map[e.keyCode] = true;
+	        userInput = false;
+	    } //  Reset keys on keyUp.
+	}).keyup(function(e) {
+	    if (e.keyCode in map) {
+	        map[e.keyCode] = false;
+	    }
+	    return false;
+	});
+
+	map = {68: false, 65: false, 87: false, 37: false, 38: false, 39: false};
+
+
+	$( function(){
+		screenWidth = window.innerWidth;
+		screenHeight = window.innerHeight;
+
+		sky = Snap(screenWidth,screenHeight);
+		
+		createStars(50);
+
+		frameRate = 100;
+		ship.xSpeed = .5;
+		ship.ySpeed = 2;
+
+		mainLoop();
+	});
 
 /*/////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -123,12 +161,12 @@ availableParts = ['fin.png','porthole.png','gun.png','jet.png'];
 
 
 	function newGame(){
-		buildShip();
+		blastOff();
 	}
 
 
 	function loadGame(){
-
+		blastOff();
 	}
 
 /*/////////////////////////////////////////////////////////////////////////////
@@ -137,22 +175,30 @@ availableParts = ['fin.png','porthole.png','gun.png','jet.png'];
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////*/
 
+	$( function(){
+		//newGame();
+	});
+
 	function buildShip(){
-		var shipBuilderInterface = '<div id="shipBuilder">';
-			shipBuilderInterface += '<img src="' + 'imgs/base.png' + '" id="shipBase"/>';
+		    shipBuilderInterface = '<div id="shipBuilder">';
+			shipBuilderInterface += '<img src="' + 'imgs/base.svg' + '" id="shipBase"/>';
+
+			shipBuilderInterface += '<div id="slots">';
+				for (i=0;i<6;i++){
+					shipBuilderInterface += '<div class="slot"></div>';
+				}
+			shipBuilderInterface += '</div>';
+
 
 			shipBuilderInterface += '<div id="parts">';
-
 				//List available parts
 				for(i=0; i < availableParts.length; i++){
 					shipBuilderInterface += '<div class="part">';	
-					shipBuilderInterface += '<img src="imgs/' + availableParts[i] + '">';
+					shipBuilderInterface += '<img src="imgs/' + availableParts[i] + '.svg">';
 					shipBuilderInterface += '<span>' + availableParts[i] + '</span>';
 					shipBuilderInterface += '</div>';
 				}
-
-			shipBuilderInterface += '<input type="button" id="setShip" value="Blast off!"/>';
-
+				shipBuilderInterface += '<input type="button" id="setShip" value="Blast off!"/>';
 			shipBuilderInterface += '</div>';
 		shipBuilderInterface += '</div>';
 
@@ -176,9 +222,80 @@ availableParts = ['fin.png','porthole.png','gun.png','jet.png'];
 
 	function mainLoop() {
 	    setInterval( function(){
-	        updateGame();
-	        drawGame();
-	    },1000/40);
+	    	if (typeof shipSVG !== 'undefined'){
+		    	checkInput();
+		    	drawShip();
+		    }
+	        move(ship.xSpeed,ship.ySpeed);
+	    },frameRate);
+	}
+
+/*/////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+    Main Play functions
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+	function blastOff(){
+		shipSVG = sky.rect(screenWidth/2, screenHeight/2, 30,15);
+
+		shipSVG.click( function(){
+			alert(angle);
+		})
+
+		shipSVG.attr({
+			'fill':'red'
+		});
+
+		ship.xSpeed = 0;
+		ship.ySpeed = 0;
+	}
+
+	function checkInput(){
+                if (map[68] || map[39]){
+                    rotate(ship,1);
+                }
+                if (map[65] || map[37]){
+                    rotate(ship,-1);
+                }
+                if (map[87] || map[38]){
+					accelerate(ship);
+                }
+	}
+
+	function accelerate(target){
+		angle = ship.rot;
+
+		var speed = target.speed;
+
+	    if (angle != 0 && angle != 90 && angle != 180 && angle != 270 && angle != 360){
+	    	var yChange = Math.sin(angle) * speed;
+	    	var xChange = Math.cos(angle) * speed;
+	    } else if (angle == 0 || angle == 180){
+	    	var xChange = speed;
+	    } else{
+	    	var yChange = speed;
+	    }
+
+	    target.xSpeed += xChange;
+	    target.ySpeed += yChange;
+	}
+
+	function rotate(target,dir){
+		target.rot += target.thrust * dir;
+		if (target.rot > 360){
+			target.rot -= 360;
+		} else if (target.rot < 0){
+			target.rot += 360;
+		}
+	}
+
+	function drawShip(){
+		shipSVG.attr({'transform':'rotate(' + ship.rot + ',' + screenWidth/2 + ',' + screenHeight/2+ ')'});	
+	}
+
+	function move(x,y){
+		moveStars(x,y);
 	}
 
 /*/////////////////////////////////////////////////////////////////////////////
