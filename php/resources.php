@@ -12,4 +12,4 @@
         <script src="js/snap.svg-min.js"></script>
 
     	<script src="js/functions.js" type="text/javascript"></script>
-		<script src="js/customStars.js"></script>
+		<script src="js/createMap.js"></script>

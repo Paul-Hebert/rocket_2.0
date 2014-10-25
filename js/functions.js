@@ -8,15 +8,19 @@ availableParts = ['fins','porthole','gun','jet1'];
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////*/
 
+	//****************************************************************************************//
+	//  Ship Attributes   //
+	//****************************************************************************************//
+
 	ship = Object.create(null);
 	ship.name = null;
 	ship.type = null;
-	ship.speed = .5;
+	ship.speed = .3;
 	ship.thrust = 4;
-	ship.rot = 0;
+	ship.rot = 90;
 
 	//****************************************************************************************//
-	//  Input control   //
+	//  Input Control   //
 	//****************************************************************************************//
 
 	//  Set down keys to true;
@@ -34,6 +38,9 @@ availableParts = ['fins','porthole','gun','jet1'];
 
 	map = {68: false, 65: false, 87: false, 37: false, 38: false, 39: false};
 
+	//****************************************************************************************//
+	//  Map Setup   //
+	//****************************************************************************************//
 
 	$( function(){
 		screenWidth = window.innerWidth;
@@ -41,9 +48,9 @@ availableParts = ['fins','porthole','gun','jet1'];
 
 		sky = Snap(screenWidth,screenHeight);
 		
-		createStars(50);
+		createObjects(35,5);
 
-		frameRate = 100;
+		frameRate = 1000/12;
 		ship.xSpeed = .5;
 		ship.ySpeed = 2;
 
@@ -221,13 +228,15 @@ availableParts = ['fins','porthole','gun','jet1'];
 //////////////////////////////////////////////////////////////////////////////*/
 
 	function mainLoop() {
-	    setInterval( function(){
+	    window.requestAnimationFrame(function(){
+
 	    	if (typeof shipSVG !== 'undefined'){
 		    	checkInput();
 		    	drawShip();
 		    }
 	        move(ship.xSpeed,ship.ySpeed);
-	    },frameRate);
+	        mainLoop();
+		});
 	}
 
 /*/////////////////////////////////////////////////////////////////////////////
@@ -237,18 +246,18 @@ availableParts = ['fins','porthole','gun','jet1'];
 //////////////////////////////////////////////////////////////////////////////*/
 
 	function blastOff(){
-		shipSVG = sky.rect(screenWidth/2, screenHeight/2, 30,15);
+		base = sky.rect(screenWidth/2, screenHeight/2, 30,15);
+		other = sky.circle(screenWidth/2,screenHeight/2 + 7.5,7.5);
+		shipSVG = sky.g(base,other);
 
 		shipSVG.click( function(){
 			alert(angle);
 		})
 
 		shipSVG.attr({
-			'fill':'red'
+			'fill':'red',
+			'border-right':'#fff'
 		});
-
-		ship.xSpeed = 0;
-		ship.ySpeed = 0;
 	}
 
 	function checkInput(){
@@ -264,7 +273,7 @@ availableParts = ['fins','porthole','gun','jet1'];
 	}
 
 	function accelerate(target){
-		angle = ship.rot;
+		var angle = ship.rot *  3.141592653589793 / 180;
 
 		var speed = target.speed;
 
@@ -295,7 +304,40 @@ availableParts = ['fins','porthole','gun','jet1'];
 	}
 
 	function move(x,y){
-		moveStars(x,y);
+		for(i=0;i<objects.length;i++){
+			// Set current star
+			current = objects[i];
+
+			var parallax = current.distance * 1;
+
+			// Move stars. Adjusted by distance to create a parallax effect.
+			current.x += x/parallax - current.xSpeed;
+			current.y += y/parallax - current.ySpeed;
+			
+			// If stars are off the screen move them to the other side and randomize the other variable.
+			if (current.x > screenWidth){
+				current.x = 0;
+				current.y = rando(0,screenHeight);
+			} else if (current.x < 0){
+				current.x = screenWidth;
+				current.y = rando(0,screenHeight);
+			}
+			if (current.y > screenHeight){
+				current.y = 0;
+				current.x = rando(0,screenWidth);
+			} else if (current.y < 0){
+				current.y = screenHeight;
+				current.x = rando(0,screenWidth);
+			}
+
+			// Animate changes.
+			if (current.x == 0 || current.x == screenWidth || current.y == 0 || current.y == screenHeight){
+				SVGs[i].animate({cx:current.x,cy:current.y},0);			
+			} else{
+				SVGs[i].animate({cx:current.x},frameRate);
+				SVGs[i].animate({cy:current.y},frameRate);
+			}
+		}
 	}
 
 /*/////////////////////////////////////////////////////////////////////////////

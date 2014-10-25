@@ -12,6 +12,9 @@
 	$name = htmlspecialchars($_POST['name']);
 	$password = htmlspecialchars($_POST['password']);
 
+	$options = array('cost' => 11);
+	$hash = password_hash($password, PASSWORD_BCRYPT, $options);
+
 	$action = htmlspecialchars($_POST['action']);
 
 	$taken = false;
@@ -31,14 +34,14 @@
 		$sql = "INSERT INTO users (name,password) VALUES (:name,:password)";
 		$q = $db->prepare($sql);
 		$q->execute(array(':name'=>$name,
-							':password'=>$password));
+							':password'=>$hash));
 
 		$db->query($sql);
 
 	} else if($action == 'load' && $taken == true){
 		$loaded = $results[$taken];
-
-		if ($password == $loaded[password]){
+		
+		if (password_verify($password, $loaded[password])){
 			echo 'ship.cash ="' . $loaded[cash] . '";';
 		} else{
 			echo 'taken = "wrongPass";';
