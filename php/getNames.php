@@ -30,21 +30,38 @@
 	echo 'taken ="' . $taken . '";';
 
 
-	if ($action == 'new' && $taken == false){
-		$sql = "INSERT INTO users (name,password) VALUES (:name,:password)";
-		$q = $db->prepare($sql);
-		$q->execute(array(':name'=>$name,
-							':password'=>$hash));
+	if ($action == 'new'){
+		if ($taken == false){
+			$sql = "INSERT INTO users (name,password) VALUES (:name,:password)";
+			$q = $db->prepare($sql);
+			$q->execute(array(':name'=>$name,
+								':password'=>$hash));
 
-		$db->query($sql);
-
-	} else if($action == 'load' && $taken == true){
-		$loaded = $results[$taken];
-		
-		if (password_verify($password, $loaded[password])){
-			echo 'ship.cash ="' . $loaded[cash] . '";';
+			$db->query($sql);
+			echo 'hideMenus();
+				loadGame();';
 		} else{
-			echo 'taken = "wrongPass";';
+			echo "if ( !taken ){
+						hideMenus();
+						newGame();
+					} else{
+						alert('Sorry, that name is already taken. Please try another.');
+					}";
+		}
+
+	} else if($action == 'load'){
+		if ($taken == true){
+			$loaded = $results[$taken];
+			
+			if (password_verify($password, $loaded[password])){
+				echo 'ship.cash ="' . $loaded[cash] . '";';
+				echo 'hideMenus();
+					loadGame();';
+			} else{
+				echo 'alert("Sorry. You\'ve entered the wrong password. Please try again.");';
+			}
+		} else{
+			echo "alert('Sorry, we couldn\'t find your save file. Please make sure you spelled your username correctly.');";
 		}
 	}
 

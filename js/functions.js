@@ -15,9 +15,15 @@ availableParts = ['fins','porthole','gun','jet1'];
 	ship = Object.create(null);
 	ship.name = null;
 	ship.type = null;
-	ship.speed = .3;
+
+	ship.speed = .2;
+	ship.maxSpeed = 5;
+
 	ship.thrust = 4;
 	ship.rot = 90;
+
+	ship.reload = 5;
+	ship.reloadCounter = 200;
 
 	//****************************************************************************************//
 	//  Input Control   //
@@ -36,7 +42,7 @@ availableParts = ['fins','porthole','gun','jet1'];
 	    return false;
 	});
 
-	map = {68: false, 65: false, 87: false, 37: false, 38: false, 39: false};
+	map = {68: false, 65: false, 87: false, 37: false, 38: false, 39: false, 32: false};
 
 	//****************************************************************************************//
 	//  Map Setup   //
@@ -47,8 +53,11 @@ availableParts = ['fins','porthole','gun','jet1'];
 		screenHeight = window.innerHeight;
 
 		sky = Snap(screenWidth,screenHeight);
-		
-		createObjects(35,5);
+		sky.attr({'id':'sky'});
+
+		createClasses();
+		// Create stars, asteroids, planets
+		createMap(35,5,1);
 
 		frameRate = 1000/12;
 		ship.xSpeed = .5;
@@ -78,12 +87,6 @@ availableParts = ['fins','porthole','gun','jet1'];
 			if (ship.name != '' && ship.name != null){
 				if (ship.password != '' && ship.password != null){
 					findName('new');
-					if ( !taken ){
-						hideMenus();
-						newGame();
-					} else{
-						alert('Sorry, that name is already taken. Please try another.');
-					}
 				} else{
 					alert('Please enter a password.');
 				}
@@ -100,16 +103,6 @@ availableParts = ['fins','porthole','gun','jet1'];
 			if (ship.name != '' && ship.name != null){
 				if (ship.password != '' && ship.password != null){
 					findName('load');
-					if ( taken != false){
-						if ( taken != 'wrongPass'){
-							hideMenus();
-							loadGame();
-						} else{
-							alert("Sorry. You\'ve entered the wrong password. Please try again.");		
-						}
-					} else{
-						alert('Sorry, we couldn\'t find your save file. Please make sure you spelled your username correctly.');
-					}
 				} else{
 					alert('Please enter a password.');
 				}
@@ -155,8 +148,7 @@ availableParts = ['fins','porthole','gun','jet1'];
 		    data:{'name': ship.name,
 		    		'password': ship.password,
 					'action':action},
-		    dataType:"script",
-		    async:false
+		    dataType:"script"
 		});
 	}
 
@@ -181,10 +173,6 @@ availableParts = ['fins','porthole','gun','jet1'];
     Ship Builder
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////*/
-
-	$( function(){
-		//newGame();
-	});
 
 	function buildShip(){
 		    shipBuilderInterface = '<div id="shipBuilder">';
@@ -234,7 +222,11 @@ availableParts = ['fins','porthole','gun','jet1'];
 		    	checkInput();
 		    	drawShip();
 		    }
+
 	        move(ship.xSpeed,ship.ySpeed);
+
+	        reloadGun(ship);
+
 	        mainLoop();
 		});
 	}
@@ -246,17 +238,16 @@ availableParts = ['fins','porthole','gun','jet1'];
 //////////////////////////////////////////////////////////////////////////////*/
 
 	function blastOff(){
-		base = sky.rect(screenWidth/2, screenHeight/2, 30,15);
-		other = sky.circle(screenWidth/2,screenHeight/2 + 7.5,7.5);
-		shipSVG = sky.g(base,other);
+		base = sky.rect(screenWidth/2-15, screenHeight/2-7.5, 30,15);
 
-		shipSVG.click( function(){
-			alert(angle);
-		})
+		//base = sky.path("M50,8.288h3.314l0.125,6.1c14.861,12.416,49.284,47.328,37.186,96.331c0,0-13.291,28.948-40.625,28.948");
+		cap = sky.circle(screenWidth/2-15,screenHeight/2,7.5);
+		gunRight = sky.rect(screenWidth/2-26,screenHeight/2-2, 15,5);
+
+		shipSVG = sky.g(base,cap,gunRight);
 
 		shipSVG.attr({
-			'fill':'red',
-			'border-right':'#fff'
+			'fill':'red'
 		});
 	}
 
@@ -270,6 +261,18 @@ availableParts = ['fins','porthole','gun','jet1'];
                 if (map[87] || map[38]){
 					accelerate(ship);
                 }
+                if (map[32]){
+                	shoot();
+                }
+	}
+
+	function rotate(target,dir){
+		target.rot += target.thrust * dir;
+		if (target.rot > 360){
+			target.rot -= 360;
+		} else if (target.rot < 0){
+			target.rot += 360;
+		}
 	}
 
 	function accelerate(target){
@@ -290,44 +293,42 @@ availableParts = ['fins','porthole','gun','jet1'];
 	    target.ySpeed += yChange;
 	}
 
-	function rotate(target,dir){
-		target.rot += target.thrust * dir;
-		if (target.rot > 360){
-			target.rot -= 360;
-		} else if (target.rot < 0){
-			target.rot += 360;
-		}
-	}
-
 	function drawShip(){
-		shipSVG.attr({'transform':'rotate(' + ship.rot + ',' + screenWidth/2 + ',' + screenHeight/2+ ')'});	
+		shipSVG.attr({'transform':'rotate(' + ship.rot + ',' + screenWidth/2 + ',' + screenHeight/2 + ')'});	
 	}
 
 	function move(x,y){
 		for(i=0;i<objects.length;i++){
-			// Set current star
+			// Set current object
 			current = objects[i];
 
 			var parallax = current.distance * 1;
 
-			// Move stars. Adjusted by distance to create a parallax effect.
+			// Move objects. Adjusted by distance to create a parallax effect.
 			current.x += x/parallax - current.xSpeed;
 			current.y += y/parallax - current.ySpeed;
 			
-			// If stars are off the screen move them to the other side and randomize the other variable.
-			if (current.x > screenWidth){
-				current.x = 0;
-				current.y = rando(0,screenHeight);
-			} else if (current.x < 0){
-				current.x = screenWidth;
-				current.y = rando(0,screenHeight);
+			// If objects have screenLoop and are off the screen move them to the other side and randomize the other variable.
+			if (current.screenLoop){
+				if (current.x > screenWidth){
+					current.x = 0;
+					current.y = rando(0,screenHeight);
+				} else if (current.x < 0){
+					current.x = screenWidth;
+					current.y = rando(0,screenHeight);
+				}
+				if (current.y > screenHeight){
+					current.y = 0;
+					current.x = rando(0,screenWidth);
+				} else if (current.y < 0){
+					current.y = screenHeight;
+					current.x = rando(0,screenWidth);
+				}
 			}
-			if (current.y > screenHeight){
-				current.y = 0;
-				current.x = rando(0,screenWidth);
-			} else if (current.y < 0){
-				current.y = screenHeight;
-				current.x = rando(0,screenWidth);
+
+			// If objects are 'collidable,' check for collisions.
+			if (current.collidable){
+				collisionTest(objects[i]);
 			}
 
 			// Animate changes.
@@ -337,6 +338,25 @@ availableParts = ['fins','porthole','gun','jet1'];
 				SVGs[i].animate({cx:current.x},frameRate);
 				SVGs[i].animate({cy:current.y},frameRate);
 			}
+		}
+	}
+
+	function shoot(){
+		if (ship.reload < ship.reloadCounter){
+			createObject( SVGs.length , bullet );
+			createSVG( SVGs.length , bullet );
+
+			ship.reloadCounter = 0;
+		}	
+	}
+
+	function reloadGun(){
+		ship.reloadCounter++;
+	}
+
+	function collisionTest(target){
+		for(i=0;i<objects.length;i++){
+			//if ()
 		}
 	}
 
