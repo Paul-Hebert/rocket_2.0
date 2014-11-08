@@ -16,14 +16,20 @@ availableParts = ['fins','porthole','gun','jet1'];
 	ship.name = null;
 	ship.type = null;
 
-	ship.speed = .2;
-	ship.maxSpeed = 5;
+	ship.health = 10;
 
-	ship.thrust = 4;
+	ship.speed = .3;
+	ship.maxSpeed = 50;
+	ship.speedHyp = 0;
+
+
+	ship.thrust = 6;
 	ship.rot = 90;
 
-	ship.reload = 5;
-	ship.reloadCounter = 200;
+	ship.colliding = new Array;
+
+	ship.reload = 3;
+	ship.reloadCounter = 100;
 
 	//****************************************************************************************//
 	//  Input Control   //
@@ -42,27 +48,33 @@ availableParts = ['fins','porthole','gun','jet1'];
 	    return false;
 	});
 
-	map = {68: false, 65: false, 87: false, 37: false, 38: false, 39: false, 32: false};
+	map = {68: false, 65: false, 87: false, 83: false, 37: false, 38: false, 39: false, 32: false, 40: false};
 
 	//****************************************************************************************//
 	//  Map Setup   //
 	//****************************************************************************************//
 
 	$( function(){
+		// Get screen dimensions
 		screenWidth = window.innerWidth;
 		screenHeight = window.innerHeight;
 
+		// Set up SVG drawing field.
 		sky = Snap(screenWidth,screenHeight);
 		sky.attr({'id':'sky'});
 
+		// Set up object templates
 		createClasses();
+
 		// Create stars, asteroids, planets
-		createMap(35,5,1);
+		resetMap();
+		createMap(30,6,1);
 
 		frameRate = 1000/12;
 		ship.xSpeed = .5;
 		ship.ySpeed = 2;
 
+		//Begin loop
 		mainLoop();
 	});
 
@@ -138,6 +150,7 @@ availableParts = ['fins','porthole','gun','jet1'];
 		$( '#startMenu' ).remove();
 	}
 
+
 	//Get current list of usernames in database.
 	function findName(action){
 		takenNames = [];
@@ -150,12 +163,6 @@ availableParts = ['fins','porthole','gun','jet1'];
 					'action':action},
 		    dataType:"script"
 		});
-	}
-
-
-	//Check to see if username already exists.
-	function checkName(){
-
 	}
 
 
@@ -218,15 +225,22 @@ availableParts = ['fins','porthole','gun','jet1'];
 	function mainLoop() {
 	    window.requestAnimationFrame(function(){
 
+	    	// If game has begun do ship functions
 	    	if (typeof shipSVG !== 'undefined'){
+	    		// Check for key input
 		    	checkInput();
+		    	// Redraw ship based on rotation
 		    	drawShip();
 		    }
 
+		    ship.colliding.length = 0;
+
+		    // Move all objects based on ship's speed and their speed.
 	        move(ship.xSpeed,ship.ySpeed);
 
 	        reloadGun(ship);
 
+	        // Request another animation frame.
 	        mainLoop();
 		});
 	}
@@ -238,18 +252,19 @@ availableParts = ['fins','porthole','gun','jet1'];
 //////////////////////////////////////////////////////////////////////////////*/
 
 	function blastOff(){
-		base = sky.rect(screenWidth/2-15, screenHeight/2-7.5, 30,15);
+		base = sky.circle(screenWidth/2, screenHeight/2, 15);
+		base2 = sky.rect(screenWidth/2, screenHeight/2-15,15,30);
 
-		//base = sky.path("M50,8.288h3.314l0.125,6.1c14.861,12.416,49.284,47.328,37.186,96.331c0,0-13.291,28.948-40.625,28.948");
 		cap = sky.circle(screenWidth/2-15,screenHeight/2,7.5);
-		gunRight = sky.rect(screenWidth/2-26,screenHeight/2-2, 15,5);
+		gun = sky.rect(screenWidth/2-26,screenHeight/2-2, 15,5);
 
-		shipSVG = sky.g(base,cap,gunRight);
+		shipSVG = sky.g(base,base2,cap,gun);
 
 		shipSVG.attr({
 			'fill':'red'
 		});
 	}
+
 
 	function checkInput(){
                 if (map[68] || map[39]){
@@ -261,10 +276,14 @@ availableParts = ['fins','porthole','gun','jet1'];
                 if (map[87] || map[38]){
 					accelerate(ship);
                 }
+                if (map[83] || map[40]){
+					land();
+                }
                 if (map[32]){
                 	shoot();
                 }
 	}
+
 
 	function rotate(target,dir){
 		target.rot += target.thrust * dir;
@@ -275,71 +294,172 @@ availableParts = ['fins','porthole','gun','jet1'];
 		}
 	}
 
+
 	function accelerate(target){
 		var angle = ship.rot *  3.141592653589793 / 180;
 
 		var speed = target.speed;
 
-	    if (angle != 0 && angle != 90 && angle != 180 && angle != 270 && angle != 360){
+	    //if (angle != 0 && angle != 90 && angle != 180 && angle != 270 && angle != 360){
 	    	var yChange = Math.sin(angle) * speed;
 	    	var xChange = Math.cos(angle) * speed;
-	    } else if (angle == 0 || angle == 180){
+	    /*} else if (angle == 0 || angle == 180){
 	    	var xChange = speed;
 	    } else{
 	    	var yChange = speed;
-	    }
+	    }*/
 
 	    target.xSpeed += xChange;
 	    target.ySpeed += yChange;
+
+	    target.speedHyp = Math.sqrt(Math.pow(target.xSpeed,2)*Math.pow(target.ySpeed,2));
+	    if(target.speedHyp > target.maxSpeed){
+	    	target.xSpeed *= target.maxSpeed/target.speedHyp;
+	    	target.ySpeed *= target.maxSpeed/target.speedHyp;
+	    }
 	}
+
 
 	function drawShip(){
 		shipSVG.attr({'transform':'rotate(' + ship.rot + ',' + screenWidth/2 + ',' + screenHeight/2 + ')'});	
 	}
 
+
 	function move(x,y){
-		for(i=0;i<objects.length;i++){
+		// Iterate through objects
+		for(i=0; i < objects.length; i++){
 			// Set current object
 			current = objects[i];
 
-			var parallax = current.distance * 1;
-
-			// Move objects. Adjusted by distance to create a parallax effect.
-			current.x += x/parallax - current.xSpeed;
-			current.y += y/parallax - current.ySpeed;
-			
-			// If objects have screenLoop and are off the screen move them to the other side and randomize the other variable.
-			if (current.screenLoop){
-				if (current.x > screenWidth){
-					current.x = 0;
-					current.y = rando(0,screenHeight);
-				} else if (current.x < 0){
-					current.x = screenWidth;
-					current.y = rando(0,screenHeight);
-				}
-				if (current.y > screenHeight){
-					current.y = 0;
-					current.x = rando(0,screenWidth);
-				} else if (current.y < 0){
-					current.y = screenHeight;
-					current.x = rando(0,screenWidth);
+			if (current.decay != false){
+				current.decay --;
+				if (current.decay <= 0){
+					current.dead = true;
+					SVGs[i].attr({
+							'fill':'#000'
+						});
 				}
 			}
 
-			// If objects are 'collidable,' check for collisions.
-			if (current.collidable){
-				collisionTest(objects[i]);
-			}
+			if (current.dead != true){
+				if (current.dead === 'dying'){
+					if (current.type == 'asteroid'){
+						// Turn asteroids to gold.
+						SVGs[i].attr({
+							'r':'3',
+							'fill':'gold'
+						});
 
-			// Animate changes.
-			if (current.x == 0 || current.x == screenWidth || current.y == 0 || current.y == screenHeight){
-				SVGs[i].animate({cx:current.x,cy:current.y},0);			
-			} else{
-				SVGs[i].animate({cx:current.x},frameRate);
-				SVGs[i].animate({cy:current.y},frameRate);
+						objects[i].type = 'gold';
+						objects[i].screenLoop = false;
+
+						objects[i].xSpeed = 0;
+						objects[i].ySpeed = 0;					
+						objects[i].relativeSize = 3;
+						objects[hit].dead = 'false';
+					}else if(current.type == 'gold'){
+						SVGs[i].attr({
+							'fill':'#000'
+						});
+				
+						objects[hit].dead = 'true';	
+						ship.gold += rando(5,10);					
+					}
+				} else{
+					var parallax = current.distance * 1;
+
+					// Move objects. Adjusted by distance to create a parallax effect.
+					current.x += x/parallax - current.xSpeed;
+					current.y += y/parallax - current.ySpeed;
+					
+					// If objects have screenLoop and are off the screen move them to the other side and randomize the other variable.
+					if (current.screenLoop){
+						if (current.x > screenWidth){
+							current.x = 0;
+							current.y = rando(0,screenHeight);
+						} else if (current.x < 0){
+							current.x = screenWidth;
+							current.y = rando(0,screenHeight);
+						}
+						if (current.y > screenHeight){
+							current.y = 0;
+							current.x = rando(0,screenWidth);
+						} else if (current.y < 0){
+							current.y = screenHeight;
+							current.x = rando(0,screenWidth);
+						}
+					}
+
+					// If objects are 'collidable,' check for collisions.
+					if (current.collidable){
+						collisionTest(current,i);
+					}
+
+					// Animate changes.
+					if (current.x == 0 || current.x == screenWidth || current.y == 0 || current.y == screenHeight){
+						SVGs[i].animate({cx:current.x,cy:current.y},0);			
+					} else{
+						SVGs[i].animate({cx:current.x},frameRate);
+						SVGs[i].animate({cy:current.y},frameRate);
+					}
+				}
 			}
 		}
 	}
+
+
+	function collisionTest(target,num){
+		target.colliding.length = 0;
+		for(z = 0; z < objects.length - 1; z++){
+			if (num != z){
+				if (objects[z].collidable){
+					hypotenuse = objects[num].relativeSize + objects[z].relativeSize;
+					horizontal = objects[num].x - objects[z].x;
+					vertical = objects[num].y - objects[z].y;
+
+					if (Math.pow(hypotenuse,2) >= Math.pow(horizontal,2) + Math.pow(vertical,2) ){
+						target.colliding.push(z);
+						//console.log(objects[z].type + '/' + objects[num].type);
+					}
+				}
+			}
+		}
+
+		for (z = 0; z < target.colliding.length; z++ ){
+			hit = target.colliding[z];
+		
+			if (target.type == 'bullet' && objects[hit].type == 'asteroid'){
+				//console.log('hit');
+				objects[hit].dead = 'dying';
+			}
+		}
+
+		if (target.x < screenWidth/2 + 25 + target.relativeSize && target.x > screenWidth/2 - 25 - target.relativeSize && target.y < screenHeight/2 + 25 + target.relativeSize && target.y > screenHeight/2 - 25 - target.relativeSize){
+			ship.colliding.push( target.type );
+			console.log(ship.colliding);
+			if (target.type == 'gold'){
+				objects[num].dead = 'dying';
+			} else if(target.type == 'bullet'){
+				ship.health --;
+				console.log(ship.health);
+				if (ship.health <= 0){
+					console.log('Game Over!');
+				}
+			}
+		}
+	}
+
+
+	function land(){
+		if (ship.speedHyp < 5){
+			for(i = 0; i < ship.colliding.length; i++){
+				alert('land');
+			}
+		} else{
+			alert("You're going too fast!");
+		}
+	}
+
 
 	function shoot(){
 		if (ship.reload < ship.reloadCounter){
@@ -350,14 +470,9 @@ availableParts = ['fins','porthole','gun','jet1'];
 		}	
 	}
 
-	function reloadGun(){
-		ship.reloadCounter++;
-	}
 
-	function collisionTest(target){
-		for(i=0;i<objects.length;i++){
-			//if ()
-		}
+	function reloadGun(){
+		ship.reloadCounter ++;
 	}
 
 /*/////////////////////////////////////////////////////////////////////////////

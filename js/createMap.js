@@ -1,5 +1,7 @@
 function createClasses(){
 	star = Object.create(null);
+		star.type = 'star';
+
 		star.fill = '#fff';
 
 		star.scaleMin = 1.5;
@@ -14,8 +16,12 @@ function createClasses(){
 		star.screenLoop = true;
 		star.collidable = false;
 
+		star.decay = false;
+
 
 	asteroid = Object.create(null);
+		asteroid.type = 'asteroid';
+
 		asteroid.fill = sky.gradient("r(1, .9, 1.5)#666-#000");
 
 		asteroid.scaleMin = 3;
@@ -28,10 +34,14 @@ function createClasses(){
 		asteroid.speedMax = 5;
 
 		asteroid.screenLoop = true;
-		asteroid.collidable = false;
+		asteroid.collidable = true;
+
+		star.decay = false;
 
 
 	planet = Object.create(null);
+		planet.type = 'planet';
+
 		planet.fill = sky.gradient("r(1, .9, 1)#2F6CF9-#000");
 
 		planet.scaleMin = 30;
@@ -44,10 +54,15 @@ function createClasses(){
 		planet.speedMax = 0;
 
 		planet.screenLoop = false;
-		planet.collidable = false;
+		planet.collidable = true;
+
+		planet.decay = false;
+
 		
 
 	bullet = Object.create(null);
+		bullet.type = 'bullet';
+
 		bullet.fill = "red";
 
 		bullet.scaleMin = 2;
@@ -58,14 +73,19 @@ function createClasses(){
 
 		bullet.screenLoop = false;
 		bullet.collidable = true;
+
+		bullet.decay = 100;
 }
 
 
-//Generate map
-function createMap(stars,asteroids,planets){
+//Reset map arrays
+function resetMap(){
 	objects = new Array();
 	SVGs = new Array();
+}
 
+//Generate map
+function createMap(stars,asteroids,planets){
 	for (i=0; i< stars; i++){
 		createObject(i,star);
 		createSVG(i,star);
@@ -83,6 +103,8 @@ function createMap(stars,asteroids,planets){
 //Add a new star object to objects[].
 function createObject(i,type){
 	objects[i] = Object.create(null);
+	objects[i].type = type.type;
+	objects[i].dead = false;
 
 	objects[i].scale = rando( type.scaleMin , type.scaleMax );
 	objects[i].distance = rando( type.distanceMin , type.distanceMax );
@@ -105,7 +127,13 @@ function createObject(i,type){
 	}
 
 	objects[i].screenLoop = type.screenLoop;
-	objects[i].colldiable = type.collidable;
+
+	objects[i].collidable = type.collidable;
+	if (objects[i].collidable){
+		objects[i].colliding = new Array;
+	}
+
+	objects[i].decay = type.decay;
 }
 
 //Add a new star SVG to SVGs[].
